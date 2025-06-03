@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, status
 from typing import List
 
+from api.services.user_service import UserService, get_user_service
 from core.auth import verify_credentials
 from core.exceptions import UserNotFoundError
 from api.schemas.user_schema import UserCreate, UserResponse
-from api.services.user_service import UserService, get_user_service
 
 protected_router = APIRouter(
     prefix="/users",

@@ -2,7 +2,6 @@ import pytest
 from fastapi.testclient import TestClient
 from api.main import app
 from api.services.user_service import get_user_service
-
 client = TestClient(app)
 
 AUTH_HEADERS = {
