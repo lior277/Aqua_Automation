@@ -1,22 +1,30 @@
 import sys
+from typing import NoReturn
 from requests import RequestException
-
 from client.services.client_service import (
     create_user,
     get_user,
     list_users,
     health_check,
-    AuthenticationError,
 )
+from core.exceptions import AuthenticationError, ApiClientError
+from core.logger import get_logger
+
+logger = get_logger(__name__)
+
+
+def handle_error(operation: str, error: Exception) -> NoReturn:
+    logger.error("Error during %s: %s", operation, error)
+    print(f"Error during {operation}: {error}")
+    sys.exit(1)
 
 
 def run_demo() -> None:
     try:
         hc = health_check()
         print("→ Health:", hc)
-    except (AuthenticationError, RequestException) as e:
-        print("Error during health check:", e)
-        sys.exit(1)
+    except (AuthenticationError, RequestException, ApiClientError) as e:
+        handle_error("health check", e)
 
     try:
         payload = {
@@ -28,28 +36,24 @@ def run_demo() -> None:
         print("Creating user via client...")
         new_user = create_user(**payload)
         print("→ Created user:", new_user)
-    except (AuthenticationError, RequestException) as e:
-        print("Error during user creation:", e)
-        sys.exit(1)
+    except (AuthenticationError, RequestException, ApiClientError) as e:
+        handle_error("user creation", e)
 
     try:
         uid = new_user.get("user_id")
         if not uid:
-            print("No 'user_id' returned; aborting fetch.")
-            sys.exit(1)
+            raise ApiClientError("No 'user_id' returned")
 
         fetched = get_user(uid)
         print("→ Fetched user:", fetched)
-    except (AuthenticationError, RequestException) as e:
-        print("Error during fetching user:", e)
-        sys.exit(1)
+    except (AuthenticationError, RequestException, ApiClientError) as e:
+        handle_error("fetching user", e)
 
     try:
         ids = list_users()
         print("→ All user IDs:", ids)
-    except (AuthenticationError, RequestException) as e:
-        print("Error during listing user IDs:", e)
-        sys.exit(1)
+    except (AuthenticationError, RequestException, ApiClientError) as e:
+        handle_error("listing user IDs", e)
 
 
 if __name__ == "__main__":

@@ -1,10 +1,10 @@
+from fastapi import APIRouter, Depends, status
 from typing import List
-from fastapi import APIRouter, HTTPException, Depends
-from core.auth import verify_credentials
-from api.schemas.user_schema import UserCreate, UserResponse
-from api.services.user_service import UserService
 
-public_router = APIRouter()
+from core.auth import verify_credentials
+from core.exceptions import UserNotFoundError
+from api.schemas.user_schema import UserCreate, UserResponse
+from api.services.user_service import UserService, get_user_service
 
 protected_router = APIRouter(
     prefix="/users",
@@ -13,21 +13,29 @@ protected_router = APIRouter(
 )
 
 
-@protected_router.post("", response_model=UserResponse, status_code=201)
-def create_user(user: UserCreate):
-    created = UserService.create_user(user)
+@protected_router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+def create_user(
+        user: UserCreate,
+        service: UserService = Depends(get_user_service)
+) -> UserResponse:
+    created = service.create_user(user)
     return UserResponse.model_validate(created, from_attributes=True)
 
 
 @protected_router.get("/{user_id}", response_model=UserResponse)
-def get_user(user_id: int):
-    user = UserService.get_user(user_id)
+def get_user(
+        user_id: int,
+        service: UserService = Depends(get_user_service)
+) -> UserResponse:
+    user = service.get_user(user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise UserNotFoundError(user_id)
     return UserResponse.model_validate(user, from_attributes=True)
 
 
 @protected_router.get("", response_model=List[int])
-def list_user_ids():
-    users = UserService.list_users()
-    return [u.user_id for u in users]
+def list_user_ids(
+        service: UserService = Depends(get_user_service)
+) -> List[int]:
+    return service.list_user_ids()
+

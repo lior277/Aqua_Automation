@@ -1,8 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
-
 from api.main import app
-from api.services.user_service import UserService
+from api.services.user_service import get_user_service
 
 client = TestClient(app)
 
@@ -13,7 +12,8 @@ AUTH_HEADERS = {
 
 @pytest.fixture(autouse=True)
 def clear_fake_db():
-    UserService.clear_all()
+    service = get_user_service()
+    service.clear_all()
     yield
 
 
@@ -22,6 +22,7 @@ def test_health_check_no_auth():
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "healthy"
+    assert data["service"] == "aqua-api"
 
 
 def test_create_user_without_auth():
@@ -59,6 +60,7 @@ def test_create_user_with_valid_auth():
     data = resp.json()
     assert data["user_id"] == 1
     assert data["israel_id"] == payload["israel_id"]
+    assert data["name"] == payload["name"]
 
 
 def test_get_user_requires_auth():
@@ -89,3 +91,26 @@ def test_full_flow_with_auth():
     list_resp = client.get("/users", headers=AUTH_HEADERS)
     assert list_resp.status_code == 200
     assert user_id in list_resp.json()
+
+
+def test_duplicate_israeli_id():
+    payload = {
+        "israel_id": "111111111",
+        "name": "First User",
+        "phone_number": "+972501234567",
+        "address": "Address 1"
+    }
+
+    resp1 = client.post("/users", json=payload, headers=AUTH_HEADERS)
+    assert resp1.status_code == 201
+
+    payload["name"] = "Second User"
+    resp2 = client.post("/users", json=payload, headers=AUTH_HEADERS)
+    assert resp2.status_code == 409
+    assert "already exists" in resp2.json()["detail"]
+
+
+def test_get_nonexistent_user():
+    resp = client.get("/users/999", headers=AUTH_HEADERS)
+    assert resp.status_code == 404
+    assert "not found" in resp.json()["detail"]

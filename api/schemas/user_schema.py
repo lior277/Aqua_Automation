@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field
 
-
 class UserCreate(BaseModel):
     israel_id: str = Field(
         ...,
@@ -22,7 +21,6 @@ class UserCreate(BaseModel):
         min_length=1,
         description="User address"
     )
-
 
 class UserResponse(UserCreate):
     user_id: int = Field(..., description="Unique user ID assigned by the system")
